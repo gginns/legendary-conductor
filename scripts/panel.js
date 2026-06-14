@@ -8,7 +8,7 @@
  * settings so it reopens where the GM left it.
  */
 
-import { MODULE_ID, isGM, warn } from "./util.js";
+import { MODULE_ID, isGM, warn, fromUuidSyncCompat, normalizePool, poolUpdate } from "./util.js";
 import { buildViewModel } from "./detector.js";
 import { resolveAction } from "./resolver.js";
 import { getSetting, setSetting } from "./settings.js";
@@ -31,7 +31,8 @@ export class ConductorPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     },
     position: { width: 320, height: "auto" },
     actions: {
-      useAction: ConductorPanel.#onUseAction
+      useAction: ConductorPanel.#onUseAction,
+      adjustPool: ConductorPanel.#onAdjustPool
     }
   };
 
@@ -145,9 +146,34 @@ export class ConductorPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!uuid) return;
     if (target.classList.contains("disabled")) return;
     target.classList.add("disabled"); // optimistic; render rebuilds truth
-    await resolveAction(uuid, { combat: game.combat });
+    await resolveAction(uuid, { combat: game.combat, event });
     // The resulting document updates trigger a re-render via the combat hooks;
     // re-render now too in case nothing on the combat itself changed.
+    ConductorPanel.refresh();
+  }
+
+  /**
+   * Click a legendary-action or legendary-resistance pip to adjust the pool.
+   * Clicking a filled pip spends down to just below it; clicking an empty pip
+   * restores up to it — the familiar "set the level" pip behavior, matching the
+   * dnd5e sheet. Writes to whichever resource field the actor's data uses.
+   */
+  static async #onAdjustPool(event, target) {
+    const { pool, actorUuid, n } = target.dataset;
+    const idx = Number(n);
+    if (!pool || !Number.isInteger(idx)) return;
+    const actor = fromUuidSyncCompat(actorUuid);
+    const res = actor?.system?.resources?.[pool];
+    if (!res) return;
+
+    const norm = normalizePool(res);
+    const filledNow = idx <= norm.value;
+    const newValue = filledNow ? idx - 1 : idx; // toggle on the boundary
+    try {
+      await actor.update(poolUpdate(`system.resources.${pool}`, norm, newValue));
+    } catch (e) {
+      warn(`Failed to adjust ${pool}`, e);
+    }
     ConductorPanel.refresh();
   }
 }

@@ -64,24 +64,74 @@
   text-overflow: ellipsis;
 }
 
-/* Legendary-action pips */
+/* -------------------------------------------- */
+/*  Legendary action / resistance pools         */
+/* -------------------------------------------- */
+
+.legcon-pool {
+  display: flex;
+  align-items: center;
+  gap: var(--legcon-gap);
+  margin: 2px 0 6px;
+}
+
+.legcon-pool-label {
+  flex: 0 0 auto;
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.65;
+  min-width: 2.2em;
+}
+
 .legcon-pips {
   display: inline-flex;
-  gap: 3px;
-  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 2px;
+  flex: 1 1 auto;
 }
 
-.legcon-pip {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 200, 120, 0.8);
-  background: transparent;
+/* Reuse dnd5e's own legendary pip art so the panel matches the sheet. */
+.legcon-pip.pip {
+  --pip-size: 22px;
+  width: var(--pip-size);
+  height: var(--pip-size);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent center / contain no-repeat;
+  cursor: pointer;
+  filter: grayscale(1);
 }
 
-.legcon-pip.filled {
-  background: var(--color-shadow-primary, #ffae42);
-  box-shadow: 0 0 3px rgba(255, 174, 66, 0.8);
+.legcon-pip.pip:hover,
+.legcon-pip.pip:focus {
+  filter: grayscale(1) drop-shadow(0 0 5px var(--dnd5e-color-gold, #c9a227));
+}
+
+.legcon-pip.pip.filled {
+  filter: none;
+}
+
+.legcon-pip.pip.filled:hover,
+.legcon-pip.pip.filled:focus {
+  filter: drop-shadow(0 0 5px var(--dnd5e-color-gold, #c9a227));
+}
+
+/* Paths are relative to this stylesheet (modules/legendary-conductor/styles/)
+   so they survive Foundry running behind a route prefix. */
+.legcon-pool.legact .legcon-pip.pip {
+  background-image: url("../../../systems/dnd5e/ui/legact-inactive.webp");
+}
+.legcon-pool.legact .legcon-pip.pip.filled {
+  background-image: url("../../../systems/dnd5e/ui/legact-active.webp");
+}
+.legcon-pool.legres .legcon-pip.pip {
+  background-image: url("../../../systems/dnd5e/ui/legres-inactive.webp");
+}
+.legcon-pool.legres .legcon-pip.pip.filled {
+  background-image: url("../../../systems/dnd5e/ui/legres-active.webp");
 }
 
 /* -------------------------------------------- */

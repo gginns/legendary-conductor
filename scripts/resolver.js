@@ -1,14 +1,19 @@
 /**
  * Action resolver.
  *
- * Clicking an action resolves it through the system: `activity.use()` runs the
- * native consumption (it decrements the legendary-action pool) and posts the
- * usual chat card. We do not re-implement the economy — we only fire the
- * activity and, for lair actions, record the round bookkeeping the system
- * doesn't track. The panel re-renders off the resulting document updates.
+ * Clicking an action resolves it through the system so dnd5e owns the economy
+ * and the chat card. The one wrinkle: dnd5e's `use()` consumes resources *before*
+ * it fires the attack roll, and it fires that roll without awaiting it — so a
+ * GM who cancels the attack dialog has already paid for the action.
+ *
+ * To honor "spend only on a completed roll", attack activities are handled in
+ * two steps: roll the attack first (awaited, so a cancel is observable), and only
+ * then run the system's consumption — skipping the redundant card and re-roll.
+ * Activities without a cancelable caster dialog (saves, utility, …) keep the
+ * plain `use()` flow, since they don't have the problem.
  */
 
-import { fromUuidSyncCompat, warn, activationType } from "./util.js";
+import { fromUuidSyncCompat, activationType, warn } from "./util.js";
 import { recordLairUse } from "./lair-state.js";
 
 let busy = false;
@@ -19,9 +24,10 @@ let busy = false;
  * @param {string} activityUuid
  * @param {object} [opts]
  * @param {Combat} [opts.combat] Combat to record lair usage against.
- * @returns {Promise<boolean>} whether the activity fired.
+ * @param {Event}  [opts.event]  Originating click (passed to the roll dialog).
+ * @returns {Promise<boolean>} whether the action actually fired (and was paid for).
  */
-export async function resolveAction(activityUuid, { combat = game.combat } = {}) {
+export async function resolveAction(activityUuid, { combat = game.combat, event = null } = {}) {
   if (busy) return false; // guard against double-clicks racing consumption
   busy = true;
   try {
@@ -32,29 +38,61 @@ export async function resolveAction(activityUuid, { combat = game.combat } = {})
     }
 
     const isLair = activationType(activity) === "lair";
+    const fired = activity.type === "attack" && typeof activity.rollAttack === "function"
+      ? await useAttackDeferred(activity, event)
+      : await useDirect(activity);
 
-    // Let the system own consumption + chat. We don't suppress its dialog:
-    // the GM may want to pick targets / spend extra. If consumption fails
-    // (e.g. not enough legendary actions) the system notifies and returns null.
-    let results;
-    try {
-      results = await activity.use();
-    } catch (e) {
-      warn("activity.use() failed", e);
-      ui.notifications.error(game.i18n.localize("LEGCON.Notifications.UseFailed"));
-      return false;
-    }
-    if (!results) return false; // cancelled or consumption refused
-
-    if (isLair) {
+    if (fired && isLair) {
       try {
         await recordLairUse(combat, activityUuid);
       } catch (e) {
         warn("Failed to record lair usage", e);
       }
     }
-    return true;
+    return fired;
   } finally {
     busy = false;
   }
+}
+
+/** Plain system use: consumes + posts the card. For non-attack activities. */
+async function useDirect(activity) {
+  try {
+    const results = await activity.use();
+    return !!results; // null when the usage dialog was cancelled (no consumption)
+  } catch (e) {
+    warn("activity.use() failed", e);
+    ui.notifications.error(game.i18n.localize("LEGCON.Notifications.UseFailed"));
+    return false;
+  }
+}
+
+/**
+ * Attack activities: roll first so a cancelled dialog spends nothing, then run
+ * consumption through the system (no second card, no auto re-roll).
+ */
+async function useAttackDeferred(activity, event) {
+  let rolls;
+  try {
+    rolls = await activity.rollAttack({ event: event ?? undefined }, {}, {});
+  } catch (e) {
+    warn("rollAttack failed", e);
+    ui.notifications.error(game.i18n.localize("LEGCON.Notifications.UseFailed"));
+    return false;
+  }
+  if (!rolls?.length) return false; // cancelled — nothing spent
+
+  // The roll happened: now let the system consume resources. Suppress the
+  // redundant usage card and the auto attack-roll we already performed.
+  try {
+    await activity.use(
+      { consume: true, subsequentActions: false },
+      { configure: false },
+      { create: false }
+    );
+  } catch (e) {
+    // The attack already resolved in chat; a consumption hiccup shouldn't crash.
+    warn("Deferred consumption failed after attack roll", e);
+  }
+  return true;
 }

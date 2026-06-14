@@ -25,36 +25,70 @@ export function isSyntheticLair(combatant) {
   return !!combatant?.getFlag?.(MODULE_ID, SYNTHETIC_FLAG);
 }
 
-/** The synthetic lair combatant in a combat, or null. */
+/** All synthetic lair combatants in a combat (normally 0 or 1). */
+export function findSyntheticLairs(combat) {
+  return combat?.combatants?.filter(c => isSyntheticLair(c)) ?? [];
+}
+
+/** The (first) synthetic lair combatant in a combat, or null. */
 export function findSyntheticLair(combat) {
-  return combat?.combatants?.find(c => isSyntheticLair(c)) ?? null;
+  return findSyntheticLairs(combat)[0] ?? null;
 }
 
 /**
- * Reconcile the synthetic combatant against the combat's lair state: create it
- * when lair content exists and it's missing, remove it when no lair content
- * remains, and keep its initiative pinned just above the lair count. Only the
- * active GM mutates the combat.
+ * Per-combat re-entrancy lock. Combat creation fires a `createCombatant` hook
+ * for every token at once; without this lock each handler would run, see "no
+ * synthetic yet" (the first create hasn't committed), and create its own —
+ * spawning duplicates. The synchronous `add` below runs before any `await`, so
+ * later handlers in the same tick bail out and the first call reconciles the
+ * final state.
+ */
+const syncing = new Set();
+
+/**
+ * Reconcile the synthetic combatant against the combat's lair state: ensure
+ * exactly one exists when lair content is present (creating or de-duplicating as
+ * needed), none when it isn't, with its initiative pinned just above the lair
+ * count. Only the active GM mutates the combat.
  */
 export async function syncLairCombatant(combat) {
   if (!combat || !isActiveGM()) return;
-  const existing = findSyntheticLair(combat);
-  const wanted = combatHasLair(combat);
+  if (syncing.has(combat.id)) return; // a sync is already in flight for this combat
+  syncing.add(combat.id);
+  try {
+    const synthetics = findSyntheticLairs(combat);
+    const wanted = combatHasLair(combat);
 
-  if (!wanted) {
-    if (existing) await removeLairCombatant(combat);
-    return;
-  }
-
-  const initiative = lairInitiative(combat) + 0.5; // wins the tie at the count
-  if (!existing) {
-    await createLairCombatant(combat, initiative);
-  } else if (existing.initiative !== initiative) {
-    try {
-      await existing.update({ initiative });
-    } catch (e) {
-      warn("Failed to update lair combatant initiative", e);
+    if (!wanted) {
+      if (synthetics.length) {
+        await combat.deleteEmbeddedDocuments("Combatant", synthetics.map(c => c.id));
+        log("Removed synthetic lair combatant(s)");
+      }
+      return;
     }
+
+    const initiative = lairInitiative(combat) + 0.5; // wins the tie at the count
+
+    if (synthetics.length === 0) {
+      await createLairCombatant(combat, initiative);
+      return;
+    }
+
+    // Keep one; delete any duplicates from a prior race.
+    const [keep, ...extra] = synthetics;
+    if (extra.length) {
+      await combat.deleteEmbeddedDocuments("Combatant", extra.map(c => c.id));
+      log(`Removed ${extra.length} duplicate lair combatant(s)`);
+    }
+    if (keep.initiative !== initiative) {
+      try {
+        await keep.update({ initiative });
+      } catch (e) {
+        warn("Failed to update lair combatant initiative", e);
+      }
+    }
+  } finally {
+    syncing.delete(combat.id);
   }
 }
 
@@ -88,21 +122,15 @@ export async function removeLairCombatant(combat) {
 }
 
 /**
- * Startup sweep: a crash or a module disable mid-combat can leave a synthetic
- * combatant behind. Remove any whose combat no longer has lair content.
+ * Startup sweep: a crash, a module disable, or a pre-fix duplicate-spawning
+ * version can leave synthetic combatants behind. Delegate to syncLairCombatant,
+ * which removes them when there's no lair content and collapses duplicates to a
+ * single combatant when there is.
  */
 export async function sweepOrphanLairCombatants() {
   if (!isActiveGM()) return;
   for (const combat of game.combats ?? []) {
-    const synthetic = findSyntheticLair(combat);
-    if (synthetic && !combatHasLair(combat)) {
-      try {
-        await combat.deleteEmbeddedDocuments("Combatant", [synthetic.id]);
-        log(`Swept orphan lair combatant from combat ${combat.id}`);
-      } catch (e) {
-        warn("Failed to sweep orphan lair combatant", e);
-      }
-    }
+    if (findSyntheticLairs(combat).length) await syncLairCombatant(combat);
   }
 }
 
@@ -123,18 +151,23 @@ export function decorateCombatTracker(app, htmlArg, _data) {
       : htmlArg?.[0] ?? htmlArg?.element ?? null;
     if (!root?.querySelectorAll) return;
 
-    const combat = game.combat;
-    const synthetic = findSyntheticLair(combat);
-    if (!synthetic) return;
+    // Decorate every synthetic row (normally one; tolerate stragglers before a
+    // sync collapses them).
+    for (const synthetic of findSyntheticLairs(game.combat)) {
+      const row = root.querySelector(`[data-combatant-id="${synthetic.id}"]`);
+      if (!row) continue;
 
-    const row = root.querySelector(`[data-combatant-id="${synthetic.id}"]`);
-    if (!row) return;
+      row.classList.add("legcon-lair-row");
 
-    row.classList.add("legcon-lair-row");
-
-    // Pin the displayed initiative to the integer count.
-    const initEl = row.querySelector(".token-initiative, .initiative");
-    if (initEl) initEl.textContent = String(Math.floor(synthetic.initiative ?? 20));
+      // Pin the displayed initiative to the integer count (we store e.g. 20.5
+      // to win the tie). The initiative number lives in different elements
+      // across versions, so set the most specific one we can find.
+      const pinned = String(Math.floor(synthetic.initiative ?? 20));
+      const initEl = row.querySelector(".token-initiative .initiative")
+        ?? row.querySelector(".initiative")
+        ?? row.querySelector(".token-initiative");
+      if (initEl && initEl.textContent.trim() !== pinned) initEl.textContent = pinned;
+    }
   } catch (e) {
     warn("Failed to decorate combat tracker", e);
   }

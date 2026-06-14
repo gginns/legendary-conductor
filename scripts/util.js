@@ -100,22 +100,40 @@ export function legendaryCost(activity) {
 }
 
 /**
- * The legendary-action pool for an actor, normalized to `{ value, max }` where
- * `value` is the number remaining. dnd5e 5.x stores `{ max, spent }`; 4.x stored
- * `{ value, max }`. We support both so the module honors its 4.0+ compat range.
+ * Normalize a `{ max, spent }` (dnd5e 5.x) or `{ value, max }` (4.x) resource to
+ * `{ value, max, usesSpent }` where `value` is the amount remaining. `usesSpent`
+ * tells writers which field to set back. Supports both so the module honors its
+ * declared 4.0+ compatibility range.
  */
-export function legendaryPool(actor) {
-  const pool = actor?.system?.resources?.legact ?? {};
-  const max = Number(pool.max) || 0;
+export function normalizePool(res) {
+  const max = Number(res?.max) || 0;
+  const usesSpent = Number.isFinite(Number(res?.spent));
   let value;
-  if (Number.isFinite(Number(pool.spent))) {
-    value = max - Number(pool.spent);          // dnd5e 5.x: { max, spent }
-  } else if (Number.isFinite(Number(pool.value))) {
-    value = Number(pool.value);                // dnd5e 4.x: { value, max }
-  } else {
-    value = max;
-  }
-  return { value: Math.max(0, Math.min(value, max)), max: Math.max(0, max) };
+  if (usesSpent) value = max - Number(res.spent);            // 5.x: { max, spent }
+  else if (Number.isFinite(Number(res?.value))) value = Number(res.value); // 4.x
+  else value = max;
+  return { value: Math.max(0, Math.min(value, max)), max: Math.max(0, max), usesSpent };
+}
+
+/** The legendary-action pool for an actor: `{ value, max, usesSpent }`. */
+export function legendaryPool(actor) {
+  return normalizePool(actor?.system?.resources?.legact);
+}
+
+/** The legendary-resistance pool for an actor: `{ value, max, usesSpent }`. */
+export function legendaryResistance(actor) {
+  return normalizePool(actor?.system?.resources?.legres);
+}
+
+/**
+ * The update payload to set a `{max,spent}`/`{value,max}` resource to a given
+ * remaining `value`, written to whichever field the actor's data uses.
+ */
+export function poolUpdate(path, normalized, value) {
+  const v = Math.max(0, Math.min(value, normalized.max));
+  return normalized.usesSpent
+    ? { [`${path}.spent`]: normalized.max - v }
+    : { [`${path}.value`]: v };
 }
 
 /**

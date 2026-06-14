@@ -13,10 +13,31 @@
         <header class="legcon-creature-head">
           <img class="legcon-portrait" src="{{c.img}}" alt="" />
           <span class="legcon-name">{{c.name}}</span>
-          <span class="legcon-pips" title="{{c.pool.value}}/{{c.pool.max}}">
-            {{#each c.pool.pips as |p|}}<i class="legcon-pip {{#if p.filled}}filled{{/if}}"></i>{{/each}}
-          </span>
         </header>
+        {{#if c.legact.max}}
+          <div class="legcon-pool legact" title="{{localize "LEGCON.Pool.Actions"}} {{c.legact.value}}/{{c.legact.max}}">
+            <span class="legcon-pool-label">{{localize "LEGCON.Pool.ActionsShort"}}</span>
+            <span class="legcon-pips">
+              {{#each c.legact.pips as |p|}}
+                <button type="button" class="legcon-pip pip {{#if p.filled}}filled{{/if}}"
+                        data-action="adjustPool" data-pool="legact"
+                        data-actor-uuid="{{c.actorUuid}}" data-n="{{p.n}}"></button>
+              {{/each}}
+            </span>
+          </div>
+        {{/if}}
+        {{#if c.legres.max}}
+          <div class="legcon-pool legres" title="{{localize "LEGCON.Pool.Resistances"}} {{c.legres.value}}/{{c.legres.max}}">
+            <span class="legcon-pool-label">{{localize "LEGCON.Pool.ResistancesShort"}}</span>
+            <span class="legcon-pips">
+              {{#each c.legres.pips as |p|}}
+                <button type="button" class="legcon-pip pip {{#if p.filled}}filled{{/if}}"
+                        data-action="adjustPool" data-pool="legres"
+                        data-actor-uuid="{{c.actorUuid}}" data-n="{{p.n}}"></button>
+              {{/each}}
+            </span>
+          </div>
+        {{/if}}
         <ul class="legcon-actions">
           {{#each c.actions as |a|}}
             <li>

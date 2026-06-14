@@ -10,7 +10,7 @@
  */
 
 import {
-  activationType, activitiesOf, lairConfig, legendaryCost, legendaryPool, warn
+  activationType, activitiesOf, lairConfig, legendaryCost, legendaryPool, legendaryResistance, warn
 } from "./util.js";
 import { lairUsageState } from "./lair-state.js";
 
@@ -85,7 +85,7 @@ export function buildViewModel(combat) {
     if (!actor) continue; // synthetic lair combatant & tokenless rows
     try {
       const card = buildCreatureCard(combatant, actor);
-      if (card.actions.length) creatures.push(card);
+      if (card) creatures.push(card);
       const lairCard = buildLairCreature(combatant, actor, combat);
       if (lairCard) lairCreatures.push(lairCard);
     } catch (e) {
@@ -106,33 +106,66 @@ export function buildViewModel(combat) {
   };
 }
 
-/** A legendary-action creature card: pool pips + affordable/greyed actions. */
+/**
+ * Display label for an action. dnd5e activities default `activity.name` to the
+ * activity-type label ("Attack", "Save", "Use"), so that alone reads nothing
+ * like the statblock. The feature (item) name is what the sheet shows
+ * ("Wing Attack", "Detect", "Tail"), so prefer it — and only append the
+ * activity name to disambiguate when one feature exposes several matching
+ * activities.
+ */
+function actionLabel(item, activity, siblingCount) {
+  const itemName = item?.name ?? "?";
+  if (siblingCount > 1 && activity?.name && activity.name !== itemName) {
+    return `${itemName} — ${activity.name}`;
+  }
+  return itemName;
+}
+
+/** Count of matching activities per item id, for label disambiguation. */
+function siblingCounts(found) {
+  const counts = {};
+  for (const { item } of found) counts[item.id] = (counts[item.id] ?? 0) + 1;
+  return counts;
+}
+
+/** Pip array for a pool: 1-based index, filled up to `value`. */
+function poolPips(pool) {
+  return Array.from({ length: pool.max }, (_, i) => ({ n: i + 1, filled: i < pool.value }));
+}
+
+/**
+ * A legendary-action creature card: legendary-action pips, legendary-resistance
+ * pips, and affordable/greyed actions. Returns null when the creature has no
+ * legendary content at all (no actions, no action pool, no resistances).
+ */
 function buildCreatureCard(combatant, actor) {
-  const pool = legendaryPool(actor);
-  const actions = collectActivities(actor, "legendary").map(({ item, activity }) => {
+  const legact = legendaryPool(actor);
+  const legres = legendaryResistance(actor);
+  const found = collectActivities(actor, "legendary");
+  const counts = siblingCounts(found);
+  const actions = found.map(({ item, activity }) => {
     const cost = legendaryCost(activity);
     return {
       uuid: activity.uuid,
-      name: activity.name || item.name,
-      img: activity.img || item.img || DEFAULT_TOKEN,
+      name: actionLabel(item, activity, counts[item.id]),
+      img: item.img || activity.img || DEFAULT_TOKEN,
       cost,
       costLabel: `${cost}`,
-      affordable: cost <= pool.value
+      affordable: cost <= legact.value
     };
   });
+
+  if (!actions.length && legact.max === 0 && legres.max === 0) return null;
 
   return {
     combatantId: combatant.id,
     actorUuid: actor.uuid,
     name: combatant.name ?? actor.name,
     img: combatant.img || actor.img || DEFAULT_TOKEN,
-    isCurrentTurn: combatant.id === combatant.combat?.combatant?.id,
-    pool: {
-      value: pool.value,
-      max: pool.max,
-      // Pips: filled up to `value`, hollow up to `max`.
-      pips: Array.from({ length: pool.max }, (_, i) => ({ filled: i < pool.value }))
-    },
+    isCurrentTurn: combatant.id === (combatant.parent ?? combatant.combat)?.combatant?.id,
+    legact: { value: legact.value, max: legact.max, pips: poolPips(legact) },
+    legres: { value: legres.value, max: legres.max, pips: poolPips(legres) },
     actions
   };
 }
@@ -152,14 +185,15 @@ function buildLairCreature(combatant, actor, combat) {
   const lastRoundActionId = state.lastRound?.round === combat.round - 1
     ? state.lastRound?.uuid
     : null;
+  const counts = siblingCounts(found);
 
   const actions = found.map(({ item, activity }) => {
     const repeatBlocked = activity.uuid === lastRoundActionId;
     const usedNow = usedThisRound && state.thisRound?.uuid === activity.uuid;
     return {
       uuid: activity.uuid,
-      name: activity.name || item.name,
-      img: activity.img || item.img || DEFAULT_TOKEN,
+      name: actionLabel(item, activity, counts[item.id]),
+      img: item.img || activity.img || DEFAULT_TOKEN,
       // Greyed when the round's lair action is spent, or when repeating it
       // would break the "not two rounds running" rule.
       disabled: usedThisRound || repeatBlocked,

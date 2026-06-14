@@ -7,6 +7,11 @@
   "LEGCON.Panel.SpentThisRound": "Used this round",
   "LEGCON.Panel.RepeatBlocked": "Can't repeat the same lair action two rounds running.",
 
+  "LEGCON.Pool.Actions": "Legendary Actions",
+  "LEGCON.Pool.ActionsShort": "Act",
+  "LEGCON.Pool.Resistances": "Legendary Resistances",
+  "LEGCON.Pool.ResistancesShort": "Res",
+
   "LEGCON.Lair.TrackerName": "Lair Actions",
 
   "LEGCON.Control.Toggle": "Legendary & Lair Conductor",

@@ -11,7 +11,8 @@ import { MODULE_ID, isGM, isActiveGM, loadTemplatesCompat, log } from "./util.js
 import { registerSettings, getSetting } from "./settings.js";
 import { ConductorPanel } from "./panel.js";
 import {
-  syncLairCombatant, removeLairCombatant, sweepOrphanLairCombatants, decorateCombatTracker
+  syncLairCombatant, removeLairCombatant, sweepOrphanLairCombatants, decorateCombatTracker,
+  isSyntheticLair
 } from "./lair.js";
 import { combatHasConductedContent } from "./detector.js";
 import { rollLairRound } from "./lair-state.js";
@@ -104,9 +105,13 @@ Hooks.on("combatRound", async (combat) => {
 Hooks.on("combatTurn", () => ConductorPanel.refresh());
 Hooks.on("updateCombat", () => ConductorPanel.refresh());
 
+// Decorate the synthetic lair row each time the tracker renders.
+Hooks.on("renderCombatTracker", decorateCombatTracker);
+
 // Combatants come and go: keep the synthetic lair combatant and panel in sync.
 Hooks.on("createCombatant", async (combatant) => {
   if (!isGM()) return;
+  if (isSyntheticLair(combatant)) return; // our own creation — don't re-trigger
   await syncLairCombatant(combatant.parent ?? combatant.combat);
   ConductorPanel.refresh();
 });
