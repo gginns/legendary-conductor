@@ -1,0 +1,204 @@
+/* Legendary & Lair Action Conductor — floating panel + tracker decoration. */
+
+.legcon-panel {
+  --legcon-gap: 6px;
+  min-width: 280px;
+}
+
+.legcon-panel .window-content {
+  padding: 8px;
+  background: rgba(20, 18, 24, 0.92);
+}
+
+.legcon-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.legcon-idle {
+  margin: 4px 2px;
+  font-style: italic;
+  opacity: 0.7;
+  text-align: center;
+}
+
+/* -------------------------------------------- */
+/*  Creature card                               */
+/* -------------------------------------------- */
+
+.legcon-creature,
+.legcon-lair {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.legcon-creature.is-turn {
+  border-color: var(--color-shadow-primary, #ff6400);
+  box-shadow: 0 0 6px rgba(255, 120, 0, 0.4);
+}
+
+.legcon-creature-head {
+  display: flex;
+  align-items: center;
+  gap: var(--legcon-gap);
+  margin-bottom: 6px;
+}
+
+.legcon-portrait {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.legcon-name {
+  font-weight: 600;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Legendary-action pips */
+.legcon-pips {
+  display: inline-flex;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.legcon-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 200, 120, 0.8);
+  background: transparent;
+}
+
+.legcon-pip.filled {
+  background: var(--color-shadow-primary, #ffae42);
+  box-shadow: 0 0 3px rgba(255, 174, 66, 0.8);
+}
+
+/* -------------------------------------------- */
+/*  Action buttons                              */
+/* -------------------------------------------- */
+
+.legcon-actions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.legcon-action {
+  display: flex;
+  align-items: center;
+  gap: var(--legcon-gap);
+  width: 100%;
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.legcon-action:hover:not(.disabled) {
+  background: rgba(255, 174, 66, 0.18);
+  border-color: rgba(255, 174, 66, 0.6);
+}
+
+.legcon-action.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+}
+
+.legcon-action-img {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 3px;
+  flex: 0 0 auto;
+  object-fit: cover;
+}
+
+.legcon-action-name {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.legcon-cost {
+  flex: 0 0 auto;
+  min-width: 1.4em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.legcon-flag {
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+
+/* -------------------------------------------- */
+/*  Lair section                                */
+/* -------------------------------------------- */
+
+.legcon-lair-head,
+.legcon-lair-head .legcon-init {
+  display: flex;
+  align-items: center;
+  gap: var(--legcon-gap);
+}
+
+.legcon-lair-head {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.legcon-lair-head .legcon-init {
+  margin-left: auto;
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.legcon-lair-creature + .legcon-lair-creature {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.legcon-spent {
+  margin-left: auto;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+}
+
+/* -------------------------------------------- */
+/*  Combat tracker row for the lair phase       */
+/* -------------------------------------------- */
+
+#combat .combatant.legcon-lair-row,
+.combat-tracker .combatant.legcon-lair-row {
+  background: linear-gradient(90deg, rgba(120, 80, 200, 0.22), transparent);
+}
+
+.legcon-lair-row .token-name,
+.legcon-lair-row .token-initiative {
+  font-style: italic;
+}

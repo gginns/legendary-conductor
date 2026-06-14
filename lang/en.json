@@ -1,0 +1,19 @@
+{
+  "LEGCON.Panel.Title": "Legendary & Lair Conductor",
+  "LEGCON.Panel.NoCombat": "No active combat.",
+  "LEGCON.Panel.NoContent": "No legendary or lair actions in this combat.",
+  "LEGCON.Panel.LairHeader": "Lair Actions",
+  "LEGCON.Panel.InitCount": "Initiative {count}",
+  "LEGCON.Panel.SpentThisRound": "Used this round",
+  "LEGCON.Panel.RepeatBlocked": "Can't repeat the same lair action two rounds running.",
+
+  "LEGCON.Lair.TrackerName": "Lair Actions",
+
+  "LEGCON.Control.Toggle": "Legendary & Lair Conductor",
+
+  "LEGCON.Settings.AutoOpen.Name": "Auto-open in combat",
+  "LEGCON.Settings.AutoOpen.Hint": "Automatically open the conductor panel when a combat containing a legendary or lair creature begins. You can always toggle it from the token controls.",
+
+  "LEGCON.Notifications.ActivityGone": "That action no longer exists on the creature.",
+  "LEGCON.Notifications.UseFailed": "Failed to use the action — see the console for details."
+}

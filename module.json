@@ -1,0 +1,49 @@
+{
+  "id": "legendary-conductor",
+  "title": "Legendary & Lair Action Conductor",
+  "description": "A GM-only floating panel that surfaces and resolves legendary creatures' off-turn economy: legendary actions at the end of others' turns, and lair actions on initiative 20. Reads live from each creature's features, leans on dnd5e's native economy, never blocks play.",
+  "version": "0.1.0",
+  "authors": [
+    {
+      "name": "gginns"
+    }
+  ],
+  "url": "https://github.com/gginns/legendary-conductor",
+  "manifest": "https://github.com/gginns/legendary-conductor/releases/latest/download/module.json",
+  "download": "https://github.com/gginns/legendary-conductor/releases/download/v0.1.0/legendary-conductor.zip",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "14"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "4.0.0",
+          "verified": "5.3.2"
+        }
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/main.js"
+  ],
+  "styles": [
+    "styles/module.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "flags": {
+    "hotReload": {
+      "extensions": ["css", "hbs", "json"],
+      "paths": ["styles", "templates", "lang"]
+    }
+  }
+}

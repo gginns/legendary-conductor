@@ -1,0 +1,75 @@
+<div class="legcon-body">
+
+  {{#unless active}}
+    <p class="legcon-idle">{{localize "LEGCON.Panel.NoCombat"}}</p>
+  {{else}}
+    {{#if empty}}
+      <p class="legcon-idle">{{localize "LEGCON.Panel.NoContent"}}</p>
+    {{/if}}
+
+    {{!-- Legendary action creatures --}}
+    {{#each creatures as |c|}}
+      <section class="legcon-creature {{#if c.isCurrentTurn}}is-turn{{/if}}">
+        <header class="legcon-creature-head">
+          <img class="legcon-portrait" src="{{c.img}}" alt="" />
+          <span class="legcon-name">{{c.name}}</span>
+          <span class="legcon-pips" title="{{c.pool.value}}/{{c.pool.max}}">
+            {{#each c.pool.pips as |p|}}<i class="legcon-pip {{#if p.filled}}filled{{/if}}"></i>{{/each}}
+          </span>
+        </header>
+        <ul class="legcon-actions">
+          {{#each c.actions as |a|}}
+            <li>
+              <button type="button"
+                      class="legcon-action {{#unless a.affordable}}disabled{{/unless}}"
+                      data-action="useAction"
+                      data-uuid="{{a.uuid}}"
+                      {{#unless a.affordable}}aria-disabled="true"{{/unless}}>
+                <img class="legcon-action-img" src="{{a.img}}" alt="" />
+                <span class="legcon-action-name">{{a.name}}</span>
+                <span class="legcon-cost">{{a.costLabel}}</span>
+              </button>
+            </li>
+          {{/each}}
+        </ul>
+      </section>
+    {{/each}}
+
+    {{!-- Lair phase --}}
+    {{#if lair}}
+      <section class="legcon-lair">
+        <header class="legcon-lair-head">
+          <i class="fa-solid fa-mountain"></i>
+          <span>{{localize "LEGCON.Panel.LairHeader"}}</span>
+          <span class="legcon-init">{{localize "LEGCON.Panel.InitCount" count=lair.initiative}}</span>
+        </header>
+        {{#each lair.creatures as |c|}}
+          <div class="legcon-lair-creature">
+            <header class="legcon-creature-head">
+              <img class="legcon-portrait" src="{{c.img}}" alt="" />
+              <span class="legcon-name">{{c.name}}</span>
+              {{#if c.usedThisRound}}<span class="legcon-spent">{{localize "LEGCON.Panel.SpentThisRound"}}</span>{{/if}}
+            </header>
+            <ul class="legcon-actions">
+              {{#each c.actions as |a|}}
+                <li>
+                  <button type="button"
+                          class="legcon-action {{#if a.disabled}}disabled{{/if}}"
+                          data-action="useAction"
+                          data-uuid="{{a.uuid}}"
+                          {{#if a.disabled}}aria-disabled="true"{{/if}}
+                          title="{{#if a.repeatBlocked}}{{localize "LEGCON.Panel.RepeatBlocked"}}{{/if}}">
+                    <img class="legcon-action-img" src="{{a.img}}" alt="" />
+                    <span class="legcon-action-name">{{a.name}}</span>
+                    {{#if a.repeatBlocked}}<i class="fa-solid fa-ban legcon-flag"></i>{{/if}}
+                  </button>
+                </li>
+              {{/each}}
+            </ul>
+          </div>
+        {{/each}}
+      </section>
+    {{/if}}
+  {{/unless}}
+
+</div>
