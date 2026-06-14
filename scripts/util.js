@@ -99,12 +99,23 @@ export function legendaryCost(activity) {
   return Number.isFinite(v) && v > 0 ? v : 1;
 }
 
-/** The legendary-action pool for an actor: `{ value, max }`, guarded. */
+/**
+ * The legendary-action pool for an actor, normalized to `{ value, max }` where
+ * `value` is the number remaining. dnd5e 5.x stores `{ max, spent }`; 4.x stored
+ * `{ value, max }`. We support both so the module honors its 4.0+ compat range.
+ */
 export function legendaryPool(actor) {
   const pool = actor?.system?.resources?.legact ?? {};
   const max = Number(pool.max) || 0;
-  const value = Number.isFinite(Number(pool.value)) ? Number(pool.value) : max;
-  return { value: Math.max(0, value), max: Math.max(0, max) };
+  let value;
+  if (Number.isFinite(Number(pool.spent))) {
+    value = max - Number(pool.spent);          // dnd5e 5.x: { max, spent }
+  } else if (Number.isFinite(Number(pool.value))) {
+    value = Number(pool.value);                // dnd5e 4.x: { value, max }
+  } else {
+    value = max;
+  }
+  return { value: Math.max(0, Math.min(value, max)), max: Math.max(0, max) };
 }
 
 /**
